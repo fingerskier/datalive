@@ -1,2 +1,2 @@
-# livejson
-Live JSON file
+# livingjson
+Living JSON file
