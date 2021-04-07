@@ -1,0 +1,22 @@
+{
+  "name": "livingjson",
+  "version": "0.1.0",
+  "description": "Live JSON in-memory with disk copy",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx nodemon test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fingerskier/livejson.git"
+  },
+  "author": "fingerskier",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fingerskier/livejson/issues"
+  },
+  "homepage": "https://github.com/fingerskier/livejson#readme",
+  "dependencies": {
+    "touch": "^3.1.0"
+  }
+}
