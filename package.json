@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fingerskier/livejson.git"
+    "url": "git+https://github.com/fingerskier/livingjson.git"
   },
   "author": "fingerskier",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/fingerskier/livejson/issues"
+    "url": "https://github.com/fingerskier/livingjson/issues"
   },
-  "homepage": "https://github.com/fingerskier/livejson#readme",
+  "homepage": "https://github.com/fingerskier/livingjson#readme",
   "dependencies": {
     "touch": "^3.1.0"
   }
