@@ -4,7 +4,7 @@
   "description": "Live JSON in-memory with disk copy",
   "main": "index.js",
   "scripts": {
-    "test": "npx nodemon test.js"
+    "test": "npx nodemon test.js --ignore '*.json'"
   },
   "repository": {
     "type": "git",
