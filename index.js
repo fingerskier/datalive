@@ -17,17 +17,19 @@ module.exports = class {
 
     const handler = {
       get: function(obj, prop) {
-        if (typeof obj[prop] === 'object' && obj[prop] !== null) {
-          return new Proxy(obj[prop], {})
+        console.log('req', prop, 'of', obj)
+        if ((typeof obj[prop] === 'object') && (obj[prop] !== null)) {
+          return new Proxy(obj[prop], handler)
         } else {
           return obj[prop];
         }
       },
-      
+
       set: function(obj, prop, value) {
         obj[prop] = value;
 
-        fs.writeFileSync(filepath, JSON.stringify(obj))
+        console.log('storing', JSON.stringify(target))
+        fs.writeFileSync(filepath, JSON.stringify(target))
 
         return true;
       }

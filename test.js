@@ -4,13 +4,14 @@ const lj = new LJ('test')
 
 lj.flarn = 'ghibbet'
 lj.one = 1
-console.log('created object', lj)
+console.log('Should be true; one is 1', lj.one===1)
+console.log(lj)
 
-const inMemoryVersion = JSON.stringify(lj)
-const storedData = require('./test.json')
-const storedVersion = JSON.stringify(storedData)
-console.log('Should be true', inMemoryVersion===storedVersion)
-console.log(inMemoryVersion, storedVersion)
+// const inMemoryVersion = JSON.stringify(lj)
+// const storedData = require('./test.json')
+// const storedVersion = JSON.stringify(storedData)
+// console.log('Should be true', inMemoryVersion===storedVersion)
+// console.log(inMemoryVersion, storedVersion)
 
 ////
 
@@ -24,7 +25,9 @@ lj2.contact = false
 console.log('Should be true', lj2.contact===false)
 
 // to create a nested property we must first create the root object
+console.log('create may property')
 lj2.may = {}
+console.log('create may.fourth property')
 lj2.may.fourth = 'Pew Pew Day'
 console.log('Object property exists', lj2.may.hasOwnProperty('fourth'))
 

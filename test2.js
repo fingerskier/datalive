@@ -12,9 +12,8 @@ console.log(textVersion, storedVersion)
 
 const lj2 = new LJ('flarn')
 
-console.log('Should be true', lj2.name==='Flarn')
-console.log('Should be true', lj2.contact===true)
-console.log('Should be true', lj2.contact===false)
+console.log('Should be true; name', lj2.name==='Flarn')
+console.log('Should be true; contact', lj2.contact===false)
 
 // to create a nested property we must first create the root object
 console.log('Object property exists', lj2.may.hasOwnProperty('fourth'))
