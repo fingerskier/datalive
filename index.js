@@ -1,5 +1,16 @@
 module.exports = class {
   constructor(name) {
+    function replacer(key, value) {
+      return (typeof value === 'function')? value.toString(): value
+    }
+    function reviver(key, value) {
+      if (value.startsWith('()=>') || (value.startsWith('function'))) {
+        return eval(value)
+      } else {
+        return value
+      }
+    }
+
     const fs = require('fs')//.promises
     const path = require('path')
 
@@ -12,7 +23,7 @@ module.exports = class {
       target = require(filepath)
     } catch (error) {
       target = defaultValue
-      fs.writeFileSync(filepath, JSON.stringify(target))
+      fs.writeFileSync(filepath, JSON.stringify(target, reviver))
     }
 
     const handler = {
@@ -27,7 +38,7 @@ module.exports = class {
       set: function(obj, prop, value) {
         obj[prop] = value;
 
-        fs.writeFileSync(filepath, JSON.stringify(target))
+        fs.writeFileSync(filepath, JSON.stringify(target, replacer))
 
         return true;
       }
