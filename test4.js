@@ -1,6 +1,6 @@
 const LJ = require('.')
 
-const lj = new LJ('Hue')
+const lj = new LJ(`${0912390548}`)
 
 lj.name = 'Hue Bris'
 lj.id = 0912390548
