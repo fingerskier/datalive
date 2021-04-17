@@ -1,11 +1,19 @@
-const LJ = require('.')('test')
+const LJ = require('.')
 
-console.log(LJ)
+const lj = new LJ('test')
 
-LJ.flarn = 'ghibbet'
-LJ.one = 1
+console.log(lj)
 
-const textVersion = JSON.stringify(LJ)
+lj.flarn = 'ghibbet'
+lj.one = 1
+
+const textVersion = JSON.stringify(lj)
 const storedVersion = JSON.stringify(require('./test.json'))
-console.log('Is same?', textVersion===storedVersion)
+console.log('Should be true', textVersion===storedVersion)
 console.log(textVersion, storedVersion)
+
+const lj2 = new LJ('flarn')
+
+lj2.name = 'Flarn'
+lj2.contact = true
+lj2.may.fourth = 'Pew Pew Day'

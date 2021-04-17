@@ -1,34 +1,36 @@
 const { fileURLToPath } = require('url')
 
-module.exports = function(name) {
-  const fs = require('fs').promises
-  const touch = require('touch')
-  const path = require('path')
-  let filepath = ''
-  let target = {}
-  let thisn = {}
+module.exports = class {
+  config(name) {
+    const fs = require('fs').promises
+    const touch = require('touch')
+    const path = require('path')
+    this.filepath = ''
+    this.target = {}
+    this.thisn = {}
 
-  try {
-    filepath = path.resolve(path.join('./' + name + '.json'))
-    thisn = require(filepath)
-  } catch (error) {
-    touch(filepath)
-    thisn = {}
-  }
-
-  const handler = {
-    get: function(obj, prop) {
-      return (prop in obj)? obj[prop]: null;
-    },
-
-    set: function(obj, prop, value) {
-      obj[prop] = value;
-
-      fs.writeFile(filepath, JSON.stringify(obj))
-
-      return true;
+    try {
+      this.filepath = path.resolve(path.join('./' + name + '.json'))
+      this.thisn = require(this.filepath)
+    } catch (error) {
+      touch(this.filepath)
+      this.thisn = {}
     }
-  }
+    
+    const handler = {
+      get: function(obj, prop) {
+        return (prop in obj)? obj[prop]: null;
+      },
+      
+      set: function(obj, prop, value) {
+        obj[prop] = value;
+        
+        fs.writeFile(this.filepath, JSON.stringify(obj))
+        
+        return true;
+      }
+    }
 
-  return new Proxy(target, handler)
+    return new Proxy(this.target, handler)
+  }
 }
