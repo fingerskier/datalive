@@ -88,6 +88,8 @@ export default class DataLive {
       }
     }
     
+    if (this.verbose) console.log('DataLive-filepath', this.filepath)
+    
     if (watch) {
       this.watch()
     }
