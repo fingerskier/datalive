@@ -127,6 +127,15 @@ describe('DataLive', () => {
     const contents = fs.readFileSync(DL.filepath, 'utf8')
     expect(contents).toBe(JSON.stringify(dl, replacer))
   })
+
+  it('should see changes to the file', () => {
+    dl.test1 = 'test2'
+    expect(dl.test1).toBe('test2')
+    const contents = JSON.parse(fs.readFileSync(DL.filepath, 'utf8'), reviver)
+    contents.externalTest = 'flarn ghibbet'
+    fs.writeFileSync(DL.filepath, JSON.stringify(contents, replacer))
+    expect(dl.externalTest).toBe('flarn ghibbet')
+  })
 })
 
 
