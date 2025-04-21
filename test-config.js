@@ -1,6 +1,7 @@
 import DataLive from './index.js'
 import os from 'os'
 import path from 'path'
+import fs from 'fs'
 
 const data = {
   anti_coast: false,
@@ -20,20 +21,37 @@ const data = {
 const filename = 'spectrum.json'
 const homeDirectory = os.homedir()
 const _filepath = path.join(homeDirectory, filename)
+console.log('Using filepath:', _filepath)
+
 const dlOptions = {
   target: data,
-  watch: true, // Changed to true to watch for changes
+  verbose: true
 }
 const DL = new DataLive(_filepath, dlOptions)
 const instance = DL.live()
 
-console.log('Initial config:', instance)
+console.log('Initial config:', JSON.stringify(instance, null, 2))
+console.log('Initial file exists:', fs.existsSync(_filepath))
+if (fs.existsSync(_filepath)) {
+  console.log('Initial file contents:', fs.readFileSync(_filepath, 'utf8'))
+}
 
 // Make a change
+console.log('\nMaking change to machine.name...')
 instance.machine.name = 'test-machine'
-console.log('After change:', instance)
+console.log('After change:', JSON.stringify(instance, null, 2))
+console.log('File exists after change:', fs.existsSync(_filepath))
+if (fs.existsSync(_filepath)) {
+  console.log('File contents after change:', fs.readFileSync(_filepath, 'utf8'))
+}
 
-// Read the file directly to verify
-import fs from 'fs'
-const fileContents = fs.readFileSync(_filepath, 'utf8')
-console.log('File contents:', fileContents) 
+// Try a direct write to verify permissions
+console.log('\nAttempting direct write...')
+try {
+  fs.writeFileSync(_filepath, JSON.stringify(instance, null, 2))
+  console.log('Direct write succeeded')
+} catch (error) {
+  console.error('Direct write failed:', error)
+}
+
+process.exit(0) 

@@ -1,6 +1,6 @@
 {
   "name": "datalive",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Live JSON in-memory with disk copy",
   "main": "index.js",
   "type": "module",

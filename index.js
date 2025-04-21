@@ -57,7 +57,7 @@ export default class DataLive {
    * @param {Object} config - The config object: {target={}, defaultValue={}, resetFileOnFail=true}
    */
   constructor(_filepath, config={}) {
-    const defaultValue = config.defaultValue || {}
+    const defaultValue = config.defaultValue || config.target || {}
     const resetFileOnFail = config.resetFileOnFail || true
     const watch = config.watch || true
     
@@ -75,20 +75,22 @@ export default class DataLive {
     
     try {
       this.target = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver)
+      if (this.verbose) console.log('Loaded existing file:', this.filepath)
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.warn('File does not exist:', this.filepath)
+        if (this.verbose) console.log('File does not exist:', this.filepath)
         if (resetFileOnFail) {
-          console.warn('Populating file with defaultValue', defaultValue)
+          if (this.verbose) console.log('Populating file with defaultValue:', JSON.stringify(defaultValue, null, 2))
           this.target = defaultValue
           fs.writeFileSync(this.filepath, JSON.stringify(this.target, replacer))
+          if (this.verbose) console.log('Created new file:', this.filepath)
         } else {
           throw error
         }
       }
     }
     
-    if (this.verbose) console.log('DataLive-filepath', this.filepath)
+    if (this.verbose) console.log('DataLive initialized with target:', JSON.stringify(this.target, null, 2))
     
     if (watch) {
       this.watch()
@@ -97,6 +99,7 @@ export default class DataLive {
   
   
   live() {
+    const self = this
     const handler = {
       get: (obj, prop) => {
         if ((typeof obj[prop] === 'object') && (obj[prop] !== null)) {
@@ -107,10 +110,12 @@ export default class DataLive {
       },
       
       set: (obj, prop, value) => {
+        // Update the property
         obj[prop] = value
         
-        fs.writeFileSync(this.filepath, JSON.stringify(this.target, replacer))
-        if (this.verbose) console.log('DataLive-', prop, 'set to', value)
+        // Ensure we're writing the entire target object
+        if (self.verbose) console.log('DataLive-', prop, 'set to', value, 'writing to', self.filepath)
+        fs.writeFileSync(self.filepath, JSON.stringify(self.target, replacer))
         
         return true
       }
