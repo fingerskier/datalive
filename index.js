@@ -1,145 +1,135 @@
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
-import { v4 as uuid } from 'uuid'
-
-
-/**
- * @description Checks if a string looks like a stringified function
- * @param {string} str 
- * @returns {boolean}
- */
-const looksLikeFn = str =>
-  /^\s*(?:function\b|\(?[\w$,\s]*\)?\s*=>)/.test(str)
-
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { v4 as uuid } from 'uuid';
 
 /**
- * @description Utility fx for stringifying functions
- * @param {string} key 
- * @param {*} value 
- * @returns {string}
+ * Detects whether a string looks like a classic or arrow function.
  */
-export function replacer(key, value) {
-  let result = value
-  if (typeof value === 'function') result = value.toString()
-  return result
-}
-
+const looksLikeFn = str => /^(?:\s*(?:function\b|\(?[\w$,\s]*\)?\s*=>))/.test(str);
 
 /**
- * @description Utility fx for parsing functions
- * @param {string} key 
- * @param {*} value 
- * @returns {*}
+ * JSON.stringify replacer that serialises functions to their source.
  */
-export function reviver(key, value) {
+export const replacer = (key, value) =>
+  typeof value === 'function' ? value.toString() : value;
+
+/**
+ * JSON.parse reviver that re‑hydrates serialised functions.
+ */
+export const reviver = (key, value) => {
   if (typeof value === 'string' && looksLikeFn(value)) {
     try {
-      // parentheses make both arrow‑ and traditional functions legal as an expression
+      // Wrapping in parentheses lets both arrow and classic functions parse as expressions.
       return eval(`(${value})`);
-    } catch (e) {
-      console.error('Error reviving function:', e);
+    } catch (err) {
+      console.error('Failed to revive function for', key, ':', err);
     }
   }
-  return value
-}
-
+  return value;
+};
 
 /**
- * @description Live POJO with JSON file copy
- * @class DataLive
+ * Live JS object backed by an on‑disk JSON file.  Mutations are persisted automatically,
+ * external edits refresh the in‑memory object, and functions survive the trip.
  */
-
 export default class DataLive {
   /**
-   * @description Create a new LiveJSON instance
-   * @param {string} _filepath - The path to the JSON file, if none then will create a temporary file;  if it lacks a .json extension then that will be added
-   * @param {Object} config - The config object: {target={}, defaultValue={}, resetFileOnFail=true}
+   * @param {?string} _filepath   Path to the JSON file (".json" appended if missing).  If omitted a temp file is created.
+   * @param {Object}  options     { defaultValue = {}, verbose = true, watch = true, resetFileOnFail = true }
    */
-  constructor(_filepath, config={}) {
-    const defaultValue = config.defaultValue || config.target || {}
-    const resetFileOnFail = config.resetFileOnFail || true
-    const watch = config.watch || true
-    
-    this.filepath = _filepath || null
-    this.target = config.target || {}
-    this.verbose = config.verbose || true
-    
-    if (!this.filepath) {
-      this.filepath = path.join(os.tmpdir(), uuid() + '.json')
-      console.warn('No filepath provided, using temporary file: ' + this.filepath)
-    } else {
-      this.filepath = this.filepath.endsWith('.json') ? this.filepath : this.filepath + '.json'
-      this.filepath = path.resolve(this.filepath)
-    }
-    
-    try {
-      this.target = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver)
-      if (this.verbose) console.log('DataLive- loaded file:', this.filepath)
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        if (this.verbose) console.log('DataLive- creating file:', this.filepath)
-        if (resetFileOnFail) {
-          if (this.verbose) console.log('Populating file with defaultValue:', JSON.stringify(defaultValue, null, 2))
-          this.target = defaultValue
-          fs.writeFileSync(this.filepath, JSON.stringify(this.target, replacer))
-          if (this.verbose) console.log('Created new file:', this.filepath)
-        } else {
-          throw error
-        }
-      }
-    }
-    
-    if (this.verbose) console.log('DataLive initialized with target:', JSON.stringify(this.target, null, 2))
-    
-    if (watch) {
-      this.watch()
-    }
+  constructor(
+    _filepath,
+    {
+      defaultValue = {},
+      verbose = true,
+      watch = true,
+      resetFileOnFail = true,
+    } = {}
+  ) {
+    this.verbose = verbose;
+
+    // Resolve the path or fall back to a temp file
+    this.filepath = _filepath
+      ? path.resolve(_filepath.endsWith('.json') ? _filepath : `${_filepath}.json`)
+      : path.join(os.tmpdir(), `${uuid()}.json`);
+
+    // Load existing data or seed the file
+    this.target = this.#load(defaultValue, resetFileOnFail);
+
+    // Lazily build a single proxy
+    this._proxy = this.#proxyFactory(this.target);
+
+    // Optionally watch for out‑of‑process changes
+    if (watch) this.#watch();
   }
-  
-  
+
+  /** Returns the live proxy (also aliased as .data for ergonomics). */
   live() {
-    const self = this
-    const handler = {
-      get: (obj, prop) => {
-        if ((typeof obj[prop] === 'object') && (obj[prop] !== null)) {
-          return new Proxy(obj[prop], handler)
-        } else {
-          return obj[prop]
-        }
-      },
-      
-      set: (obj, prop, value) => {
-        // Update the property
-        obj[prop] = value
-        
-        // Ensure we're writing the entire target object
-        if (self.verbose) console.log('DataLive-', prop, 'set to', value, 'writing to', self.filepath)
-        fs.writeFileSync(self.filepath, JSON.stringify(self.target, replacer))
-        
-        return true
+    return this._proxy;
+  }
+  get data() {
+    return this._proxy;
+  }
+
+  // --------‑‑ private implementation details below ‑‑--------- //
+
+  #load(defaultValue, reset) {
+    if (fs.existsSync(this.filepath)) {
+      try {
+        const raw = fs.readFileSync(this.filepath, 'utf8');
+        if (this.verbose) console.log('DataLive- loaded', this.filepath);
+        return JSON.parse(raw, reviver);
+      } catch (err) {
+        if (!reset) throw err;
+        if (this.verbose) console.warn('DataLive- load error', err.message)
       }
     }
-    
-    return new Proxy(this.target, handler)
+
+    if (this.verbose) console.log('DataLive- initialising', this.filepath, 'with', defaultValue)
+    this.#write(defaultValue);
+    return defaultValue;
   }
-  
-  
-  /**
-   * @description Watch the file for changes
-   */
-  watch() {
-    if (!this.filepath) return console.error('No filepath to watch')
-    
-    fs.watch(this.filepath, (event, filename) => {
+
+  #write(obj) {
+    fs.writeFileSync(this.filepath, JSON.stringify(obj, replacer));
+  }
+
+  #proxyFactory(root) {
+    const write = () => this.#write(root);
+
+    const handler = {
+      get(target, prop, receiver) {
+        const val = Reflect.get(target, prop, receiver);
+        return typeof val === 'object' && val !== null ? new Proxy(val, handler) : val;
+      },
+      set(target, prop, value) {
+        const ok = Reflect.set(target, prop, value);
+        write()
+        if (this.verbose) console.log('DataLive- set', prop, value)
+        return ok;
+      },
+      deleteProperty(target, prop) {
+        const ok = Reflect.deleteProperty(target, prop);
+        write()
+        if (this.verbose) console.log('DataLive- deleted', prop)
+        return ok;
+      },
+    };
+    return new Proxy(root, handler);
+  }
+
+  #watch() {
+    const self = this
+    fs.watch(this.filepath, event => {
+      if (event !== 'change') return;
       try {
-        if (event === 'change') {
-          // if the file changes externally then update the target obj
-          this.target = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver)
-        }
-      } catch (error) {
-        console.error('Error watching file: ' + this.filepath)
+        const fresh = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver);
+        Object.assign(self.target, fresh);
+        if (this.verbose) console.log('DataLive- file change detected')
+      } catch (err) {
+        if (this.verbose) console.error('DataLive- refresh error', err.message)
       }
-    })
+    });
   }
 }

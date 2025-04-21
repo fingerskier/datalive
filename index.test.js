@@ -1,92 +1,13 @@
-import {afterAll, beforeAll, describe, it, expect} from 'vitest'
+import {afterAll, afterEach, beforeAll, beforeEach, describe, it, expect} from 'vitest'
 import DataLive, {replacer, reviver} from './index.js'
 import fs from 'fs'
+import path from 'path'
+import { tmpdir } from 'os'
+import {randomString, sleep} from './testHelpers.js'
 
 let filename = './schlum'
 let intermediary = {}
 let savedFilepath = ''
-
-const randomString = () => Math.random().toString(36).substring(2, 15)
-const randomInt = () => Math.floor(Math.random() * 1000000)
-
-
-describe('replacer', () => {
-  let rand = randomString()
-  
-  it('should stringify arrow functions', () => {
-    const func = () => rand
-    const result = replacer(rand, func)
-    expect(result).toBe(func.toString())
-  })
-  
-  it('should stringify named functions', () => {
-    const func = function test() { return rand }
-    const result = replacer(rand, func)
-    expect(result).toBe(func.toString())
-  })
-  
-  it('should not stringify non-functions', () => {
-    const result = replacer(rand, rand)
-    expect(result).toBe(rand)
-  })
-})
-
-
-describe('reviver', () => {
-  let rand = randomString()
-  
-  it('should parse arrow functions', () => {
-    const func = () => 'test'
-    console.debug('Original function:', func, typeof func)
-    const funcString = func.toString()
-    console.debug('Function string:', funcString, typeof funcString)
-    const result = reviver('test', funcString)
-    console.debug('Final result:', result, typeof result)
-    if (typeof result === 'function') {
-      console.debug('Result is a function, calling it:', result())
-    }
-    expect(result()).toBe(func())
-  })
-  
-  it('should parse named functions', () => {
-    const func = function test() { return 'test' }
-    const result = reviver('test', func.toString())
-    expect(result()).toBe(func())
-  })
-  
-  it('should not parse non-functions', () => {
-    const result = reviver('test', 'test')
-    expect(result).toBe('test')
-  })
-})
-
-
-describe('DataLive existing file', () => {
-  let dl
-  let DL
-  let oldContent
-  
-  beforeAll(() => {
-    DL = new DataLive(filename)
-    if (fs.existsSync(DL.filepath)) {
-      const data = fs.readFileSync(DL.filepath, 'utf8')
-      oldContent = JSON.parse(data, reviver)
-      dl = DL.live()
-    }
-  })
-  
-  if (oldContent) {
-    it('should have the same contents as the previous instance', () => {
-      expect(JSON.stringify(dl, replacer)).toBe(JSON.stringify(oldContent, replacer))
-    })
-  } else {
-    it('NO EXISTING FILE', () => {
-      expect(true).toBe(true)
-    })
-  }
-  
-
-})
 
 
 describe('DataLive', () => {
@@ -105,7 +26,7 @@ describe('DataLive', () => {
   
 
   beforeAll(() => {
-    DL = new DataLive(filename)
+    DL = new DataLive(filename, {verbose: false})
     dl = DL.live()
   })
   
@@ -172,7 +93,6 @@ describe('DataLive', () => {
   })
   
   it('should have the correct file-contents', () => {
-    console.debug('DL.filepath', DL.filepath)
     const contents = fs.readFileSync(DL.filepath, 'utf8')
     expect(contents).toBe(JSON.stringify(dl, replacer))
   })
@@ -194,12 +114,66 @@ describe('DataLive', () => {
 })
 
 
+describe('DataLive – core behaviour', () => {
+  let file, dl;
+
+  const mkFile = obj => {
+    file = path.join(tmpdir(), `${Date.now()}-${Math.random()}.json`);
+    fs.writeFileSync(file, JSON.stringify(obj ?? {}, replacer));
+  };
+
+  beforeEach(() => {
+    mkFile({});                     // empty but *existing* file
+    dl = new DataLive(file, {verbose: false}).live();
+  });
+
+  afterEach(() => fs.rmSync(file, { force: true }));
+
+  it('loads existing JSON', () => {
+    fs.writeFileSync(file, JSON.stringify({ sentinel: 'ok' }, replacer));
+    const fresh = new DataLive(file, {verbose: false}).live();
+    expect(fresh.sentinel).toBe('ok');
+  });
+
+  it('persists primitives, objects and arrays', () => {
+    dl.a = 1;
+    dl.b = { c: 'x' };
+    dl.d = [2, 3];
+    const reloaded = new DataLive(file, {verbose: false}).live();
+    expect(reloaded.a).toBe(1);
+    expect(reloaded.b.c).toBe('x');
+    expect(reloaded.d[1]).toBe(3);
+  });
+
+  it('revives functions', () => {
+    dl.mul = n => n * 2;
+    const again = new DataLive(file, {verbose: false}).live();
+    expect(again.mul(4)).toBe(8);
+  });
+
+  it('reacts to external edits (watch)', async () => {
+    const json = JSON.parse(fs.readFileSync(file, 'utf8'), reviver);
+    json.external = 'update';
+    fs.writeFileSync(file, JSON.stringify(json, replacer));
+    
+    await sleep(100)
+    expect(dl.external).toBe('update')
+  })
+
+  it('resets on corrupt JSON when enabled', () => {
+    fs.writeFileSync(file, '{ bad json', 'utf8');
+    const fresh = new DataLive(file, { defaultValue: { ok: true }, resetFileOnFail: true }).live();
+    expect(fresh.ok).toBe(true);
+  });
+});
+
+
 describe('DataLive default temporary file', () => {
   let dl
   let DL
   
   beforeAll(() => {
-    DL = new DataLive()
+    DL = new DataLive(null, {verbose: false})
     dl = DL.live()
   })
   
@@ -214,31 +188,8 @@ describe('DataLive default temporary file', () => {
   it('should have a temporary file with a .json extension', () => {
     expect(DL.filepath).toMatch(/\.json$/)
   })
-})
 
-
-describe('New instance, old file', () => {
-  let dl
-  let DL
-  
-  beforeAll(() => {
-    DL = new DataLive(filename)
-    dl = DL.live()
-  })
-  
-  it('should create a new DataLive instance', () => {
-    expect(dl).toBeDefined()
-  })
-  
-  it('should have a file', () => {
-    expect(DL.filepath).toBeDefined()
-  })
-  
-  it('should have the same file as the previous instance', () => {
-    expect(DL.filepath).toBe(savedFilepath)
-  })
- 
-  it('should have the same contents as the previous instance', () => {
-    expect(JSON.stringify(dl, replacer)).toBe(JSON.stringify(intermediary, replacer))
+  afterAll(() => {
+    fs.unlinkSync(DL.filepath)
   })
 })
