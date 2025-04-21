@@ -63,6 +63,7 @@ export default class DataLive {
     
     this.filepath = _filepath || null
     this.target = config.target || {}
+    this.verbose = config.verbose || true
     
     if (!this.filepath) {
       this.filepath = path.join(os.tmpdir(), uuid() + '.json')
@@ -107,6 +108,7 @@ export default class DataLive {
         obj[prop] = value
         
         fs.writeFileSync(this.filepath, JSON.stringify(this.target, replacer))
+        if (this.verbose) console.log('DataLive-', prop, 'set to', value)
         
         return true
       }
