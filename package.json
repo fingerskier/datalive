@@ -1,6 +1,6 @@
 {
   "name": "livingjson",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Live JSON in-memory with disk copy",
   "main": "index.js",
   "scripts": {
