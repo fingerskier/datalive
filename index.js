@@ -61,13 +61,14 @@ export default class DataLive {
     const resetFileOnFail = config.resetFileOnFail || true
     const watch = config.watch || true
     
+    this.filepath = _filepath || null
     this.target = config.target || {}
     
-    if (!_filepath) {
+    if (!this.filepath) {
       this.filepath = path.join(os.tmpdir(), uuid() + '.json')
       console.warn('No filepath provided, using temporary file: ' + this.filepath)
     } else {
-      this.filepath = _filepath.endsWith('.json') ? _filepath : _filepath + '.json'
+      this.filepath = this.filepath.endsWith('.json') ? this.filepath : this.filepath + '.json'
       this.filepath = path.resolve(this.filepath)
     }
     
@@ -89,7 +90,6 @@ export default class DataLive {
     if (watch) {
       this.watch()
     }
-    console.debug('this.filepath', this.filepath)
   }
   
   
