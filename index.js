@@ -75,10 +75,10 @@ export default class DataLive {
     
     try {
       this.target = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver)
-      if (this.verbose) console.log('Loaded existing file:', this.filepath)
+      if (this.verbose) console.log('DataLive- loaded file:', this.filepath)
     } catch (error) {
       if (error.code === 'ENOENT') {
-        if (this.verbose) console.log('File does not exist:', this.filepath)
+        if (this.verbose) console.log('DataLive- creating file:', this.filepath)
         if (resetFileOnFail) {
           if (this.verbose) console.log('Populating file with defaultValue:', JSON.stringify(defaultValue, null, 2))
           this.target = defaultValue

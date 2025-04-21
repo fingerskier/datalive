@@ -1,9 +1,8 @@
 import {afterAll, beforeAll, describe, it, expect} from 'vitest'
 import DataLive, {replacer, reviver} from './index.js'
 import fs from 'fs'
-import path from 'path'
 
-let filename = './flarn'
+let filename = './schlum'
 let intermediary = {}
 let savedFilepath = ''
 
@@ -13,7 +12,7 @@ const randomInt = () => Math.floor(Math.random() * 1000000)
 
 describe('replacer', () => {
   let rand = randomString()
-
+  
   it('should stringify arrow functions', () => {
     const func = () => rand
     const result = replacer(rand, func)
@@ -59,6 +58,34 @@ describe('reviver', () => {
     const result = reviver('test', 'test')
     expect(result).toBe('test')
   })
+})
+
+
+describe('DataLive existing file', () => {
+  let dl
+  let DL
+  let oldContent
+  
+  beforeAll(() => {
+    DL = new DataLive(filename)
+    if (fs.existsSync(DL.filepath)) {
+      const data = fs.readFileSync(DL.filepath, 'utf8')
+      oldContent = JSON.parse(data, reviver)
+      dl = DL.live()
+    }
+  })
+  
+  if (oldContent) {
+    it('should have the same contents as the previous instance', () => {
+      expect(JSON.stringify(dl, replacer)).toBe(JSON.stringify(oldContent, replacer))
+    })
+  } else {
+    it('NO EXISTING FILE', () => {
+      expect(true).toBe(true)
+    })
+  }
+  
+
 })
 
 
@@ -210,7 +237,7 @@ describe('New instance, old file', () => {
   it('should have the same file as the previous instance', () => {
     expect(DL.filepath).toBe(savedFilepath)
   })
-
+ 
   it('should have the same contents as the previous instance', () => {
     expect(JSON.stringify(dl, replacer)).toBe(JSON.stringify(intermediary, replacer))
   })
