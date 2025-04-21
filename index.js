@@ -1,49 +1,136 @@
-module.exports = class {
-  constructor(name) {
-    function replacer(key, value) {
-      return (typeof value === 'function')? value.toString(): value
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { v4 as uuid } from 'uuid'
+
+
+/**
+ * @description Checks if a string looks like a stringified function
+ * @param {string} str 
+ * @returns {boolean}
+ */
+const looksLikeFn = str =>
+  /^\s*(?:function\b|\(?[\w$,\s]*\)?\s*=>)/.test(str)
+
+
+/**
+ * @description Utility fx for stringifying functions
+ * @param {string} key 
+ * @param {*} value 
+ * @returns {string}
+ */
+export function replacer(key, value) {
+  let result = value
+  if (typeof value === 'function') result = value.toString()
+  return result
+}
+
+
+/**
+ * @description Utility fx for parsing functions
+ * @param {string} key 
+ * @param {*} value 
+ * @returns {*}
+ */
+export function reviver(key, value) {
+  if (typeof value === 'string' && looksLikeFn(value)) {
+    try {
+      // parentheses make both arrow‑ and traditional functions legal as an expression
+      return eval(`(${value})`);
+    } catch (e) {
+      console.error('Error reviving function:', e);
     }
-    function reviver(key, value) {
-      if (value.startsWith('()=>') || (value.startsWith('function'))) {
-        return eval(value)
-      } else {
-        return value
+  }
+  return value
+}
+
+
+/**
+ * @description Live POJO with JSON file copy
+ * @class DataLive
+ */
+
+export default class DataLive {
+  /**
+   * @description Create a new LiveJSON instance
+   * @param {string} _filepath - The path to the JSON file, if none then will create a temporary file;  if it lacks a .json extension then that will be added
+   * @param {Object} config - The config object: {target={}, defaultValue={}, resetFileOnFail=true}
+   */
+  constructor(_filepath, config={}) {
+    const defaultValue = config.defaultValue || {}
+    const resetFileOnFail = config.resetFileOnFail || true
+    const watch = config.watch || true
+    
+    this.target = config.target || {}
+    
+    if (!_filepath) {
+      this.filepath = path.join(os.tmpdir(), uuid() + '.json')
+      console.warn('No filepath provided, using temporary file: ' + this.filepath)
+    } else {
+      this.filepath = _filepath.endsWith('.json') ? _filepath : _filepath + '.json'
+      this.filepath = path.resolve(this.filepath)
+    }
+    
+    try {
+      this.target = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver)
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        console.warn('File does not exist:', this.filepath)
+        if (resetFileOnFail) {
+          console.warn('Populating file with defaultValue', defaultValue)
+          this.target = defaultValue
+          fs.writeFileSync(this.filepath, JSON.stringify(this.target, replacer))
+        } else {
+          throw error
+        }
       }
     }
-
-    const fs = require('fs')//.promises
-    const path = require('path')
-
-    let filepath = ''
-    let target
-    let defaultValue = {}
-
-    try {
-      filepath = path.resolve(path.join('./' + name + '.json'))
-      target = require(filepath)
-    } catch (error) {
-      target = defaultValue
-      fs.writeFileSync(filepath, JSON.stringify(target, reviver))
+    
+    if (watch) {
+      this.watch()
     }
-
+    console.debug('this.filepath', this.filepath)
+  }
+  
+  
+  live() {
     const handler = {
-      get: function(obj, prop) {
+      get: (obj, prop) => {
         if ((typeof obj[prop] === 'object') && (obj[prop] !== null)) {
           return new Proxy(obj[prop], handler)
         } else {
-          return obj[prop];
+          return obj[prop]
         }
       },
-
-      set: function(obj, prop, value) {
-        obj[prop] = value;
-
-        fs.writeFileSync(filepath, JSON.stringify(target, replacer))
-
-        return true;
+      
+      set: (obj, prop, value) => {
+        obj[prop] = value
+        
+        fs.writeFileSync(this.filepath, JSON.stringify(this.target, replacer))
+        
+        return true
       }
     }
-
-    return new Proxy(target, handler)
+    
+    return new Proxy(this.target, handler)
+  }
+  
+  
+  /**
+   * @description Watch the file for changes
+   */
+  watch() {
+    if (!this.filepath) return console.error('No filepath to watch')
+    
+    fs.watch(this.filepath, (event, filename) => {
+      try {
+        if (event === 'change') {
+          // if the file changes externally then update the target obj
+          this.target = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver)
+        }
+      } catch (error) {
+        console.error('Error watching file: ' + this.filepath)
+      }
+    })
   }
 }

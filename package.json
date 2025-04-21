@@ -1,10 +1,11 @@
 {
-  "name": "livingjson",
+  "name": "datalive",
   "version": "0.3.0",
   "description": "Live JSON in-memory with disk copy",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "npx nodemon test.js --ignore '*.json'"
+    "test": "vitest"
   },
   "repository": {
     "type": "git",
@@ -17,6 +18,10 @@
   },
   "homepage": "https://github.com/fingerskier/livingjson#readme",
   "dependencies": {
-    "touch": "^3.1.0"
+    "touch": "^3.1.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.1"
   }
 }
