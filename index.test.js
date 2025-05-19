@@ -193,3 +193,33 @@ describe('DataLive default temporary file', () => {
     fs.unlinkSync(DL.filepath)
   })
 })
+
+describe('DataLive events', () => {
+  let file, DL, dl
+
+  beforeEach(() => {
+    file = path.join(tmpdir(), `${Math.random()}.json`)
+    fs.writeFileSync(file, JSON.stringify({}, replacer))
+    DL = new DataLive(file, {verbose: false})
+    dl = DL.live()
+  })
+
+  afterEach(() => fs.rmSync(file, {force: true}))
+
+  it('emits change events for keys', () => {
+    let value
+    DL.on('change:test', v => value = v)
+    dl.test = 'hello'
+    expect(value).toBe('hello')
+  })
+
+  it('emits events when file changes', async () => {
+    let captured
+    DL.on('change:test', v => captured = v)
+    const json = JSON.parse(fs.readFileSync(file, 'utf8'), reviver)
+    json.test = 'world'
+    fs.writeFileSync(file, JSON.stringify(json, replacer))
+    await sleep(100)
+    expect(captured).toBe('world')
+  })
+})

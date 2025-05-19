@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { EventEmitter } from 'events';
 import { v4 as uuid } from 'uuid';
 
 /**
@@ -33,7 +34,7 @@ export const reviver = (key, value) => {
  * Live JS object backed by an on‑disk JSON file.  Mutations are persisted automatically,
  * external edits refresh the in‑memory object, and functions survive the trip.
  */
-export default class DataLive {
+export default class DataLive extends EventEmitter {
   /**
    * @param {?string} _filepath   Path to the JSON file (".json" appended if missing).  If omitted a temp file is created.
    * @param {Object}  options     { defaultValue = {}, verbose = true, watch = true, resetFileOnFail = true }
@@ -47,6 +48,7 @@ export default class DataLive {
       resetFileOnFail = true,
     } = {}
   ) {
+    super();
     this.verbose = verbose;
 
     // Resolve the path or fall back to a temp file
@@ -95,6 +97,16 @@ export default class DataLive {
     fs.writeFileSync(this.filepath, JSON.stringify(obj, replacer));
   }
 
+  #emitChange(key, value) {
+    this.emit('change', key, value)
+    this.emit(`change:${key}`, value)
+  }
+
+  #emitDelete(key) {
+    this.emit('delete', key)
+    this.emit(`delete:${key}`)
+  }
+
   #proxyFactory(root) {
     const write = () => this.#write(root);
 
@@ -107,12 +119,14 @@ export default class DataLive {
         const ok = Reflect.set(target, prop, value);
         write()
         if (this.verbose) console.log('DataLive- set', prop, value)
+        this.#emitChange(prop, value)
         return ok;
       },
       deleteProperty(target, prop) {
         const ok = Reflect.deleteProperty(target, prop);
         write()
         if (this.verbose) console.log('DataLive- deleted', prop)
+        this.#emitDelete(prop)
         return ok;
       },
     };
@@ -125,7 +139,20 @@ export default class DataLive {
       if (event !== 'change') return;
       try {
         const fresh = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver);
+        const existing = { ...self.target };
         Object.assign(self.target, fresh);
+
+        for (const [k, v] of Object.entries(fresh)) {
+          if (!Object.is(existing[k], v)) {
+            self.#emitChange(k, v);
+          }
+        }
+        for (const k of Object.keys(existing)) {
+          if (!(k in fresh)) {
+            delete self.target[k];
+            self.#emitDelete(k);
+          }
+        }
         if (this.verbose) console.log('DataLive- file change detected')
       } catch (err) {
         if (this.verbose) console.error('DataLive- refresh error', err.message)
