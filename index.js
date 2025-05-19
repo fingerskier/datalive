@@ -108,6 +108,7 @@ export default class DataLive extends EventEmitter {
   }
 
   #proxyFactory(root) {
+    const self = this
     const write = () => this.#write(root);
 
     const handler = {
@@ -119,14 +120,14 @@ export default class DataLive extends EventEmitter {
         const ok = Reflect.set(target, prop, value);
         write()
         if (this.verbose) console.log('DataLive- set', prop, value)
-        this.#emitChange(prop, value)
+        self.#emitChange(prop, value)
         return ok;
       },
       deleteProperty(target, prop) {
         const ok = Reflect.deleteProperty(target, prop);
         write()
         if (this.verbose) console.log('DataLive- deleted', prop)
-        this.#emitDelete(prop)
+        self.#emitDelete(prop)
         return ok;
       },
     };
