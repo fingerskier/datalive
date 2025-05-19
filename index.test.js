@@ -222,4 +222,11 @@ describe('DataLive events', () => {
     await sleep(100)
     expect(captured).toBe('world')
   })
+
+  it('emits delete events when keys are deleted', () => {
+    let captured
+    DL.on('delete:test', () => captured = true)
+    delete dl.test
+    expect(captured).toBe(true)
+  })
 })

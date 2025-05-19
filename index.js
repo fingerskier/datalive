@@ -112,7 +112,6 @@ export default class DataLive extends EventEmitter {
     fs.writeFileSync(this.filepath, JSON.stringify(obj, replacer));
   }
 
-<<<<<<< HEAD
   #emitChange(key, value) {
     this.emit('change', key, value)
     this.emit(`change:${key}`, value)
@@ -123,12 +122,10 @@ export default class DataLive extends EventEmitter {
     this.emit(`delete:${key}`)
   }
 
-=======
   /**
    * Create a proxy that automatically persists mutations.
    * @private
    */
->>>>>>> a5b5db37f2a8aeaabec56382b0bf04b0edb9059b
   #proxyFactory(root) {
     const self = this
     const write = () => this.#write(root);
@@ -141,23 +138,15 @@ export default class DataLive extends EventEmitter {
       set(target, prop, value) {
         const ok = Reflect.set(target, prop, value);
         write()
-<<<<<<< HEAD
         if (this.verbose) console.log('DataLive- set', prop, value)
         self.#emitChange(prop, value)
-=======
-        if (this.verbose) console.debug('DataLive- set', prop, value)
->>>>>>> a5b5db37f2a8aeaabec56382b0bf04b0edb9059b
         return ok;
       },
       deleteProperty(target, prop) {
         const ok = Reflect.deleteProperty(target, prop);
         write()
-<<<<<<< HEAD
         if (this.verbose) console.log('DataLive- deleted', prop)
         self.#emitDelete(prop)
-=======
-        if (this.verbose) console.debug('DataLive- deleted', prop)
->>>>>>> a5b5db37f2a8aeaabec56382b0bf04b0edb9059b
         return ok;
       },
     };
@@ -177,7 +166,6 @@ export default class DataLive extends EventEmitter {
         const fresh = JSON.parse(fs.readFileSync(this.filepath, 'utf8'), reviver);
         const existing = { ...self.target };
         Object.assign(self.target, fresh);
-<<<<<<< HEAD
 
         for (const [k, v] of Object.entries(fresh)) {
           if (!Object.is(existing[k], v)) {
@@ -191,9 +179,6 @@ export default class DataLive extends EventEmitter {
           }
         }
         if (this.verbose) console.log('DataLive- file change detected')
-=======
-        if (this.verbose) console.debug('DataLive- file change detected')
->>>>>>> a5b5db37f2a8aeaabec56382b0bf04b0edb9059b
       } catch (err) {
         if (this.verbose) console.error('DataLive- refresh error', err.message)
       }
