@@ -36,14 +36,14 @@ export const reviver = (key, value) => {
  */
 export default class DataLive extends EventEmitter {
   /**
-   * @param {?string} _filepath   Path to the JSON file (".json" appended if missing).  If omitted a temp file is created.
-   * @param {Object}  options     { defaultValue = {}, verbose = true, watch = true, resetFileOnFail = true }
+   * @param {?string} _filepath   Path to the JSON file (".json" appended if missing). If omitted a temporary file is created.
+   * @param {Object}  options     { defaultValue = {}, verbose = false, watch = true, resetFileOnFail = true }
    */
   constructor(
     _filepath,
     {
       defaultValue = {},
-      verbose = true,
+      verbose = false,
       watch = true,
       resetFileOnFail = true,
     } = {}
@@ -66,21 +66,32 @@ export default class DataLive extends EventEmitter {
     if (watch) this.#watch();
   }
 
-  /** Returns the live proxy (also aliased as .data for ergonomics). */
+  /**
+   * Returns a proxy to the data object. Any mutations to the proxy are
+   * automatically written back to disk.
+   */
   live() {
     return this._proxy;
   }
+  /**
+   * Alias for {@link live} to allow property-style access to the live object.
+   * @return {Object}
+   */
   get data() {
     return this._proxy;
   }
 
   // --------‑‑ private implementation details below ‑‑--------- //
 
+  /**
+   * Load existing JSON or initialise a new file.
+   * @private
+   */
   #load(defaultValue, reset) {
     if (fs.existsSync(this.filepath)) {
       try {
         const raw = fs.readFileSync(this.filepath, 'utf8');
-        if (this.verbose) console.log('DataLive- loaded', this.filepath);
+        if (this.verbose) console.debug('DataLive- loaded', this.filepath);
         return JSON.parse(raw, reviver);
       } catch (err) {
         if (!reset) throw err;
@@ -88,11 +99,15 @@ export default class DataLive extends EventEmitter {
       }
     }
 
-    if (this.verbose) console.log('DataLive- initialising', this.filepath, 'with', defaultValue)
+    if (this.verbose) console.debug('DataLive- initialising', this.filepath, 'with', defaultValue)
     this.#write(defaultValue);
     return defaultValue;
   }
 
+  /**
+   * Persist the object to disk.
+   * @private
+   */
   #write(obj) {
     fs.writeFileSync(this.filepath, JSON.stringify(obj, replacer));
   }
@@ -134,6 +149,11 @@ export default class DataLive extends EventEmitter {
     return new Proxy(root, handler);
   }
 
+  /**
+   * Watch the backing file for external changes and update the in-memory
+   * object when they occur.
+   * @private
+   */
   #watch() {
     const self = this
     fs.watch(this.filepath, event => {
