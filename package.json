@@ -1,10 +1,11 @@
 {
   "name": "datalive",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Live JSON in-memory with disk copy",
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "document": "npx jsdoc -c jsdoc.json",
     "test": "vitest"
   },
   "repository": {
@@ -22,6 +23,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "jsdoc": "^4.0.4",
     "vitest": "^3.1.1"
   }
 }
